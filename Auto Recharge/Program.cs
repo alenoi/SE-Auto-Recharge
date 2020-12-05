@@ -39,6 +39,7 @@ namespace IngameScript
         List<IMyBatteryBlock> battery;
 
 
+
         public void Main(string argument, UpdateType updateSource)
         {
             error = "";
@@ -67,6 +68,7 @@ namespace IngameScript
                     cdCount--;
                 }
             }
+
             PBDisplay();
         }
 
@@ -136,6 +138,9 @@ namespace IngameScript
                 Echo("Auto: " + autobattery + " || Recharge: " + (battery.Count - autobattery).ToString() + "\n");
                 Echo(ScriptSpeedManagement());
             }
+
+
+
         }
 
         private void ShowBatteryLevel()
@@ -202,6 +207,7 @@ namespace IngameScript
                     break;
                 }
             }
+
             return result0connector;
         }
 
