@@ -1,5 +1,14 @@
-﻿Auto Dock Recharge v20201205
+﻿ -- Auto Recharge Manager --
+v20201206
 
+You can turn on and off features and configurate the heat resistance of the PB in Custom data.
+
+Please make sure during the configuration to optimize the script performance with the heatLimit 
+parameter as high as possible. If the performance is low the ship might be unable to detect 
+that it is not docked any more. This can cause the fall and crash of the ship.
+
+The code is compressed, but you can find the original on Github:
+https://github.com/alenoi/SE-Auto-Recharge
 
 -------------------------------------------------------------------------
 -------------- No modification beyond this line --------------

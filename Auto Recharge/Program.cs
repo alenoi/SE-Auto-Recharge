@@ -7,6 +7,25 @@ namespace IngameScript
     partial class Program : MyGridProgram
     {
 
+
+
+        double serverLimit;
+        double avg = 0.1;
+        int cdCount = 0;
+        double avgcd = 5;
+        int autobattery = 0;
+        string error = "";
+        bool init = true;
+        bool dampenerManagement;
+        bool batteryManagement;
+        bool batteryBackupManagement;
+        bool scriptSpeedManagement;
+        int heatLimit;
+
+        List<IMyTerminalBlock> connector;
+        List<IMyShipController> cockpit;
+        List<IMyBatteryBlock> battery;
+
         public Program()
         {
             Runtime.UpdateFrequency = UpdateFrequency.Update1;
@@ -17,50 +36,27 @@ namespace IngameScript
 
         }
 
-        bool filterThis(IMyTerminalBlock block)
-        {
-            return block.CubeGrid == Me.CubeGrid;
-        }
-
-        double serverLimit = 0.3;
-        double avg = 0.1;
-        int cdCount = 0;
-        double avgcd = 10;
-        int autobattery = 0;
-        string error = "";
-        bool init = true;
-        bool dampenerManagement = true;
-        bool batteryRechargeManagement = true;
-        bool batteryBackupManagement = true;
-        bool scriptSpeedManagement = true;
-
-        List<IMyTerminalBlock> connector;
-        List<IMyShipController> cockpit;
-        List<IMyBatteryBlock> battery;
-
 
 
         public void Main(string argument, UpdateType updateSource)
         {
             error = "";
-
             Initialization(ref error);
-
+            PBDisplay();
             if (error == "")
             {
-                if ((cdCount <= 0 && avg < serverLimit) || !scriptSpeedManagement)
+                if ((cdCount <= 0 && avg < serverLimit & scriptSpeedManagement) || !scriptSpeedManagement)
                 {
-
                     ShowBatteryLevel();
                     if (ConnectorCheck())
                     {
-                        SetDampeners(false);
-                        BatteryManagement(true);
+                        SetDampeners(false, ref dampenerManagement);
+                        BatteryManagement(true, ref batteryManagement, ref batteryBackupManagement);
                     }
                     else
                     {
-                        BatteryManagement(false);
-                        SetDampeners(true);
+                        SetDampeners(true, ref dampenerManagement);
+                        BatteryManagement(false, ref batteryManagement, ref batteryBackupManagement);
                     }
                 }
                 else
@@ -68,13 +64,11 @@ namespace IngameScript
                     cdCount--;
                 }
             }
-
-            PBDisplay();
         }
 
-        private void BatteryManagement(bool connected)
+        private void BatteryManagement(bool connected, ref bool batteryManagement, ref bool batteryBackupManagement)
         {
-            if (batteryRechargeManagement)
+            if (batteryManagement)
             {
                 if (connected)
                 {
@@ -95,7 +89,7 @@ namespace IngameScript
                         }
 
                     }
-                    BatteryBackupManagement();
+                    BatteryBackupManagement(ref batteryBackupManagement);
                 }
                 else
                 {
@@ -107,7 +101,7 @@ namespace IngameScript
             }
         }
 
-        private void BatteryBackupManagement()
+        private void BatteryBackupManagement(ref bool batteryBackupManagement)
         {
             if (batteryBackupManagement)
             {
@@ -135,18 +129,19 @@ namespace IngameScript
             }
             else
             {
-                Echo("Auto: " + autobattery + " || Recharge: " + (battery.Count - autobattery).ToString() + "\n");
+                Echo("Script speed management: " + scriptSpeedManagement.ToString() + "\n"
+                    + "Battery management: " + batteryManagement.ToString() + "\n"
+                    + "Battery backup management: " + batteryBackupManagement.ToString() + "\n"
+                    + "Dampener management: " + dampenerManagement.ToString() + "\n");
                 Echo(ScriptSpeedManagement());
             }
-
-
-
         }
 
         private void ShowBatteryLevel()
         {
-            if (batteryRechargeManagement)
+            if (batteryManagement)
             {
+                autobattery = 0;
                 foreach (IMyBatteryBlock batt in battery)
                 {
                     if (batt.ChargeMode == ChargeMode.Recharge)
@@ -156,12 +151,14 @@ namespace IngameScript
                     else if (batt.ChargeMode == ChargeMode.Auto)
                     {
                         batt.CustomName = "[- " + (Math.Round((batt.CurrentStoredPower / batt.MaxStoredPower) * 100)).ToString() + "%]" + batt.CustomName.Split(']')[batt.CustomName.Split(']').Length - 1];
+                        autobattery++;
                     }
                 }
+                Echo("Auto: " + autobattery + " || Recharge: " + (battery.Count - autobattery).ToString() + "\n");
             }
         }
 
-        private void SetDampeners(bool dir)
+        private void SetDampeners(bool dir, ref bool dampenerManagement)
         {
             if (dampenerManagement)
             {
@@ -182,19 +179,61 @@ namespace IngameScript
             {
                 Me.CustomData =
                     "With setting the next variables you can turn ON and OFF the features \nof the script \n\n"
-                    + "bool dampenerManagement = true \n"
-                    + "bool batteryRechargeManagement = true \n"
-                    + "bool batteryBackupManagement = true \n\n"
+                    + "dampenerManagement=true\n"
+                    + "batteryManagement=true\n"
+                    + "batteryBackupManagement=true\n\n"
                     + "If you play on a multiplayer server and the runtime of the PB is limited, \nmodify the next variables accordingly \n\n"
-                    + "bool scriptSpeedManagement = true \n"
-                    + "double serverLimit = 0.3 \n";
+                    + "scriptSpeedManagement=true\n"
+                    + "serverLimit=0.3 ms\n"
+                    + "heatLimit=50 %\n";
+                CustomData();
             }
         }
 
         private void CustomDataProcess(string customData)
         {
-            ////////////////////////////////////////////////////TODO
+            List<string[]> customInput = new List<string[]>();
+            string[] customDataA = customData.Split('\n');
+            for (int i = 0; i < customDataA.Length; i++)
+            {
+                if (customDataA[i].Contains("="))
+                {
+                    customInput.Add(customDataA[i].Split('='));
+                }
+            }
+            foreach (var item in customInput)
+            {
+                item[0] = item[0].Substring(0, item[0].Length);
+                item[1] = item[1].Split(' ')[0];
+            }
+            foreach (var item in customInput)
+            {
+                switch (item[0])
+                {
+                    default:
+                        break;
+                    case "dampenerManagement":
+                        dampenerManagement = bool.Parse(item[1]);
+                        break;
+                    case "batteryManagement":
+                        batteryManagement = bool.Parse(item[1]);
+                        break;
+                    case "batteryBackupManagement":
+                        batteryBackupManagement = bool.Parse(item[1]);
+                        break;
+                    case "scriptSpeedManagement":
+                        scriptSpeedManagement = bool.Parse(item[1]);
+                        break;
+                    case "serverLimit":
+                        serverLimit = double.Parse(item[1]);
+                        break;
+                    case "heatLimit":
+                        heatLimit = int.Parse(item[1]);
+                        break;
+                }
+            }
         }
+
 
         private bool ConnectorCheck()
         {
@@ -207,7 +246,6 @@ namespace IngameScript
                     break;
                 }
             }
-
             return result0connector;
         }
 
@@ -217,14 +255,22 @@ namespace IngameScript
             string scriptspeed = "";
             if (scriptSpeedManagement)
             {
-                cdCount = (int)Math.Round(Math.Pow(2, ((avg / serverLimit) * 10)));
+                if (Math.Round(((avg / serverLimit) * 100), 1) > heatLimit)
+                {
+                    cdCount = (int)Math.Round(Math.Pow(2, ((avg / serverLimit) * 10)));
+                }
                 avg = avg * 0.995 + Runtime.LastRunTimeMs * 0.005;
                 avgcd = avgcd * 0.995 + cdCount * 0.005;
+                scriptspeed += "Server limit: " + serverLimit + " ms\n";
                 scriptspeed += "Avg runtime: " + Math.Round(avg, 3).ToString() + " ms\n";
-                scriptspeed += "PB heat: " + Math.Round((avg / serverLimit), 1) + "%\n";
-                scriptspeed += "Script performance: " + Math.Round((1 / avgcd) * 100).ToString() + "%\n";
+                scriptspeed += "PB heat: " + Math.Round(((avg / serverLimit) * 100), 1) + "%\n";
+                scriptspeed += "Script performance: " + Math.Round((1 / (avgcd + 1)) * 100).ToString() + "%\n";
             }
             return scriptspeed;
+        }
+        bool filterThis(IMyTerminalBlock block)
+        {
+            return block.CubeGrid == Me.CubeGrid;
         }
         private void Initialization(ref string error)
         {
