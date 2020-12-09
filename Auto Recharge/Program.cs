@@ -10,9 +10,9 @@ namespace IngameScript
 
 
         double serverLimit;
-        double avg = 0.1;
+        double avg = 0;
         int cdCount = 0;
-        double avgcd = 5;
+        double avgcd = 0;
         int autobattery = 0;
         string error = "";
         bool init = true;
@@ -21,6 +21,8 @@ namespace IngameScript
         bool batteryBackupManagement;
         bool scriptSpeedManagement;
         int heatLimit;
+        bool connectorState = false;
+        int rounds = 0;
 
         List<IMyTerminalBlock> connector;
         List<IMyShipController> cockpit;
@@ -47,16 +49,30 @@ namespace IngameScript
             {
                 if ((cdCount <= 0 && avg < serverLimit & scriptSpeedManagement) || !scriptSpeedManagement)
                 {
-                    ShowBatteryLevel();
-                    if (ConnectorCheck())
+                    if (rounds >= 10)
                     {
-                        SetDampeners(false, ref dampenerManagement);
-                        BatteryManagement(true, ref batteryManagement, ref batteryBackupManagement);
+                        BatteryBackupManagement(ref batteryBackupManagement, connectorState);
+                        ShowBatteryLevel();
+                        rounds = 0;
                     }
                     else
                     {
-                        SetDampeners(true, ref dampenerManagement);
-                        BatteryManagement(false, ref batteryManagement, ref batteryBackupManagement);
+                        rounds++;
+                        ShowBatteryLevel();
+                    }
+                    if (ConnectorCheck() != connectorState)
+                    {
+                        connectorState = ConnectorCheck();
+                        if (connectorState)
+                        {
+                            SetDampeners(false, ref dampenerManagement);
+                            BatteryManagement(true, ref batteryManagement, ref batteryBackupManagement);
+                        }
+                        else
+                        {
+                            SetDampeners(true, ref dampenerManagement);
+                            BatteryManagement(false, ref batteryManagement, ref batteryBackupManagement);
+                        } 
                     }
                 }
                 else
@@ -89,7 +105,7 @@ namespace IngameScript
                         }
 
                     }
-                    BatteryBackupManagement(ref batteryBackupManagement);
+                    BatteryBackupManagement(ref batteryBackupManagement, connected);
                 }
                 else
                 {
@@ -101,7 +117,7 @@ namespace IngameScript
             }
         }
 
-        private void BatteryBackupManagement(ref bool batteryBackupManagement)
+        private void BatteryBackupManagement(ref bool batteryBackupManagement, bool connectorState)
         {
             if (batteryBackupManagement)
             {
@@ -115,6 +131,16 @@ namespace IngameScript
                             maxbattery = batt;
                         }
                     }
+                }
+                if (connectorState)
+                {
+                    foreach (IMyBatteryBlock batt in battery)
+                    {
+                        if (autobattery > 1 && batt.ChargeMode == ChargeMode.Auto)
+                        {
+                            batt.ChargeMode = ChargeMode.Recharge;
+                        }
+                    } 
                 }
                 maxbattery.ChargeMode = ChargeMode.Auto;
             }
@@ -141,18 +167,21 @@ namespace IngameScript
         {
             if (batteryManagement)
             {
-                autobattery = 0;
-                foreach (IMyBatteryBlock batt in battery)
+                if (rounds >=10)
                 {
-                    if (batt.ChargeMode == ChargeMode.Recharge)
+                    autobattery = 0;
+                    foreach (IMyBatteryBlock batt in battery)
                     {
-                        batt.CustomName = "[+ " + (Math.Round((batt.CurrentStoredPower / batt.MaxStoredPower) * 100)).ToString() + "%]" + batt.CustomName.Split(']')[batt.CustomName.Split(']').Length - 1];
-                    }
-                    else if (batt.ChargeMode == ChargeMode.Auto)
-                    {
-                        batt.CustomName = "[- " + (Math.Round((batt.CurrentStoredPower / batt.MaxStoredPower) * 100)).ToString() + "%]" + batt.CustomName.Split(']')[batt.CustomName.Split(']').Length - 1];
-                        autobattery++;
-                    }
+                        if (batt.ChargeMode == ChargeMode.Recharge)
+                        {
+                            batt.CustomName = "[+ " + (Math.Round((batt.CurrentStoredPower / batt.MaxStoredPower) * 100)).ToString() + "%]" + batt.CustomName.Split(']')[batt.CustomName.Split(']').Length - 1];
+                        }
+                        else if (batt.ChargeMode == ChargeMode.Auto)
+                        {
+                            batt.CustomName = "[- " + (Math.Round((batt.CurrentStoredPower / batt.MaxStoredPower) * 100)).ToString() + "%]" + batt.CustomName.Split(']')[batt.CustomName.Split(']').Length - 1];
+                            autobattery++;
+                        }
+                    } 
                 }
                 Echo("Auto: " + autobattery + " || Recharge: " + (battery.Count - autobattery).ToString() + "\n");
             }
@@ -299,6 +328,7 @@ namespace IngameScript
                     error += "No battery\n";
                 }
                 init = false;
+                connectorState = ConnectorCheck();
             }
 
         }
