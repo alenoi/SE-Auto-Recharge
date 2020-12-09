@@ -6,9 +6,6 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
-
-
-
         double serverLimit;
         double avg = 0;
         int cdCount = 0;
@@ -37,8 +34,6 @@ namespace IngameScript
         {
 
         }
-
-
 
         public void Main(string argument, UpdateType updateSource)
         {
@@ -72,7 +67,7 @@ namespace IngameScript
                         {
                             SetDampeners(true, ref dampenerManagement);
                             BatteryManagement(false, ref batteryManagement, ref batteryBackupManagement);
-                        } 
+                        }
                     }
                 }
                 else
@@ -140,7 +135,7 @@ namespace IngameScript
                         {
                             batt.ChargeMode = ChargeMode.Recharge;
                         }
-                    } 
+                    }
                 }
                 maxbattery.ChargeMode = ChargeMode.Auto;
             }
@@ -167,7 +162,7 @@ namespace IngameScript
         {
             if (batteryManagement)
             {
-                if (rounds >=10)
+                if (rounds >= 10)
                 {
                     autobattery = 0;
                     foreach (IMyBatteryBlock batt in battery)
@@ -181,7 +176,7 @@ namespace IngameScript
                             batt.CustomName = "[- " + (Math.Round((batt.CurrentStoredPower / batt.MaxStoredPower) * 100)).ToString() + "%]" + batt.CustomName.Split(']')[batt.CustomName.Split(']').Length - 1];
                             autobattery++;
                         }
-                    } 
+                    }
                 }
                 Echo("Auto: " + autobattery + " || Recharge: " + (battery.Count - autobattery).ToString() + "\n");
             }
