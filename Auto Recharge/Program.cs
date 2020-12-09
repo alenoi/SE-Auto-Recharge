@@ -28,7 +28,7 @@ namespace IngameScript
 
         public Program()
         {
-            Runtime.UpdateFrequency = UpdateFrequency.Update1;
+            Runtime.UpdateFrequency = UpdateFrequency.Update10;
         }
 
         public void Save()
@@ -185,7 +185,7 @@ namespace IngameScript
                     + "If you play on a multiplayer server and the runtime of the PB is limited, \nmodify the next variables accordingly \n\n"
                     + "scriptSpeedManagement=true\n"
                     + "serverLimit=0.3 ms\n"
-                    + "heatLimit=50 %\n";
+                    + "heatLimit=30 %\n";
                 CustomData();
             }
         }
